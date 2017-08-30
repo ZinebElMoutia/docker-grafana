@@ -1,4 +1,4 @@
-#!/bin/bash
+!/bin/bash
 
 # set sensible defaults if not provided by docker run
 : "${GF_SECURITY_ADMIN_USER:=admin}"
@@ -18,8 +18,8 @@ function create_dashboard_from_template {
     # A json file exported from grafana as a template
     grafana_template=$(cat "$1");
 
-    # wrap it into the shape that the API expects
-    dashboard="{\"overwrite\":true,\"dashboard\": $grafana_template }"
+    # Wrap the dashboard json format into the shape that the API expects
+    dashboard="{\"dashboard\": $grafana_template,\"overwrite\":true, \"inputs\":[]}"
     echo "$dashboard"
 }
 
@@ -30,7 +30,7 @@ function bootstrap_grafana {
     local LOOP_COUNT_SECONDS=0
 
     # Wait until grafana is up
-    until $(curl --silent --fail --show-error --output /dev/null -u ${GRAFANA_BASIC_AUTH} http://${GRAFANA_URL}/api/datasources); do
+    until $(curl --silent --fail --show-error --output /dev/null -u admin:admin http://localhost:3000/api/datasources); do
         # If we've tried too many times
         if (( ${LOOP_COUNT_SECONDS} >= ${LOOP_TIMEOUT_SECONDS} )); then
             echo "Error: Server never started."
@@ -47,33 +47,31 @@ function bootstrap_grafana {
     done ;
 
     # Loop over datasources, and add each via API
-    # Currently only using a single Prometheus data source
-    for file in $(find ${GRAFANA_SOURCES_PATH}/datasources/ -name '*.json') ; do
+    for file in $(find /etc/grafana/datasources/ -name '*.json') ; do
         if [ -e "$file" ] ; then
-            echo "importing datasource: $file" &&
-            curl --silent --fail --show-error \
-                -u ${GRAFANA_BASIC_AUTH} \
-                --request POST http://${GRAFANA_URL}/api/datasources \
+            echo "Importing datasource: $file" &&
+            curl -v \
+                -u admin:admin \
+                --request POST http://localhost:3000/api/datasources \
                 --header "Content-Type: application/json" \
                 --data-binary "@$file" ;
-            echo "" ;
+            echo "Tried to import datasource: $file" ;
         fi
     done ;
 
     # Loop over dashboards, and add each via API
     # Dashboards use a nested version of the dashboard templates
-    for file in $(find ${GRAFANA_SOURCES_PATH}/dashboards/ -name '*.json') ; do
+    for file in $(find $ /etc/grafana/dashboards/ -name '*.json') ; do
         if [ -e "$file" ] ; then
-            # convert grafana 'templates' to what the api expects
+            # Pre-process the dashboard json format to what the API expects
             dashboard=$(create_dashboard_from_template $file)
-
-            echo "importing dashboard: $file" &&
-            curl --silent --fail --show-error \
-                -u ${GRAFANA_BASIC_AUTH} \
-                --request POST http://${GRAFANA_URL}/api/dashboards/db \
+            echo "Importing dashboard: $file" &&
+            curl -v \
+                -u admin:admin \
+                --request POST http://localhost:3000/api/dashboards/db \
                 --header "Content-Type: application/json" \
-                --data "$dashboard" ;
-            echo "" ;
+                --data "@$file" ;
+            echo "Tried to import the dashboard: $file" ;
         fi
     done ;
 }
