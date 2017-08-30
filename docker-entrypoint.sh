@@ -64,7 +64,7 @@ function bootstrap_grafana {
     for file in $(find $ /etc/grafana/dashboards/ -name '*.json') ; do
         if [ -e "$file" ] ; then
             # Pre-process the dashboard json format to what the API expects
-            dashboard=$(create_dashboard_from_template $file)
+            #dashboard=$(create_dashboard_from_template $file)
             echo "Importing dashboard: $file" &&
             curl -v \
                 -u admin:admin \
