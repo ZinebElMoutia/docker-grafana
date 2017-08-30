@@ -70,7 +70,7 @@ function bootstrap_grafana {
                 -u admin:admin \
                 --request POST http://localhost:3000/api/dashboards/db \
                 --header "Content-Type: application/json" \
-                --data "@$file" ;
+                --data "$dashboard" ;
             echo "Tried to import the dashboard: $file" ;
         fi
     done ;
